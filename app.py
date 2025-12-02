@@ -71,7 +71,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-// Configure allowed IP addresses/CIDR ranges and optional bypass
+# Configure allowed IP addresses/CIDR ranges and optional bypass
 ALLOWED_IPS = os.getenv('ALLOWED_IPS', '127.0.0.1/32').split(',')
 DISABLE_IP_FILTER = os.getenv('DISABLE_IP_FILTER', 'false').lower() in {'1','true','yes'}
 
