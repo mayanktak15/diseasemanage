@@ -6,3 +6,4 @@ requests==2.32.3
 gunicorn
 python-dotenv
 google-generativeai
+pysqlite3-binary
