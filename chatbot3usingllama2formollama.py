@@ -83,22 +83,19 @@ combine_documents_chain = StuffDocumentsChain(
 # ======== Query Processor ========
 def process_query(user_query, symptoms=None):
     # Prepare the symptoms section if provided
-    symptoms_section = f"User Symptoms: {symptoms}\nIncorporate these symptoms into your response if relevant." if symptoms else ""
+    symptoms_section = (
+        f"User Symptoms: {symptoms}\nIncorporate these symptoms into your response if relevant."
+        if symptoms else ""
+    )
 
     # Retrieve the top 3 relevant documents
     top_docs = retriever.get_relevant_documents(user_query)[:3]
 
-    # Debug: Print the retrieved documents
-    print("--- Retrieved Documents ---")
-    for i, doc in enumerate(top_docs):
-        print(f"Doc {i+1}: {doc.page_content}")
-        print("-" * 50)
+    # Build context from retrieved documents
+    context = "\n\n".join(doc.page_content for doc in top_docs)
 
-    # Pass the relevant documents to the chain for processing
-    from langchain.llms import Ollama
-    ollama = Ollama(base_url='http://localhost:11434', model="docify")
-    result=ollama(f"answer user query base on retrived information{user_query}+{top_docs} give short and summerized answer"
-                  f"do not recomand and medication ask them to fill the form and consult a doc")
+    # Generate response using the configured LLM chain
+    result = llm_chain.run(context=context, question=user_query, symptoms_section=symptoms_section)
     print(result)
     return result
 

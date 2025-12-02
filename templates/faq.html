@@ -1,43 +1,407 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FAQ - Docify Online</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 font-sans">
-    <header class="bg-blue-600 text-white p-4">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold">Docify Online</h1>
-            <nav>
-                <a href="{{ url_for('home') }}" class="px-2">Home</a>
-                {% if 'user_id' in session %}
-                    <a href="{{ url_for('dashboard') }}" class="px-2">Dashboard</a>
-                    <a href="{{ url_for('logout') }}" class="px-2">Logout</a>
+{% extends 'base.html' %}
+{% block title %}FAQ - Docify Online{% endblock %}
+{% block extra_head %}
+    <style>
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                max-height: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                max-height: 500px;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease-out forwards;
+            opacity: 0;
+        }
+        
+        .faq-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        
+        .faq-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(37, 99, 235, 0.15);
+        }
+        
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out, opacity 0.3s ease-out;
+            opacity: 0;
+        }
+        
+        .faq-answer.active {
+            animation: slideDown 0.4s ease-out forwards;
+            opacity: 1;
+        }
+        
+        .icon-rotate {
+            transition: transform 0.3s ease;
+        }
+        
+        .icon-rotate.active {
+            transform: rotate(180deg);
+        }
+        
+        .hero-blob {
+            animation: pulse 3s ease-in-out infinite;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="max-w-4xl mx-auto">
+        <div class="max-w-4xl mx-auto">
+            <!-- Hero Section -->
+            <div class="text-center mb-16 fade-in-up">
+                <div class="inline-block mb-6 hero-blob">
+                    <div class="bg-gradient-to-br from-blue-400 to-blue-600 w-24 h-24 rounded-full flex items-center justify-center shadow-2xl">
+                        <i class="fas fa-question-circle text-white text-5xl"></i>
+                    </div>
+                </div>
+                <h2 class="text-5xl font-bold text-gray-800 mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-800">
+                    Frequently Asked Questions
+                </h2>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Find answers to common questions about Docify Online. Click on any question to expand the answer.
+                </p>
+                <div class="mt-6 inline-flex items-center space-x-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full">
+                    <i class="fas fa-lightbulb"></i>
+                    <span class="text-sm font-medium">Can't find your answer? Use our chatbot!</span>
+                </div>
+            </div>
+
+            <!-- FAQ Items -->
+            <div class="space-y-5">
+                <!-- FAQ 1 -->
+                <div class="faq-card bg-white rounded-2xl shadow-lg overflow-hidden fade-in-up" style="animation-delay: 0.1s;" onclick="toggleFAQ(1)">
+                    <div class="flex items-center justify-between p-6 cursor-pointer">
+                        <div class="flex items-center space-x-4 flex-1">
+                            <div class="bg-blue-100 p-3 rounded-xl">
+                                <i class="fas fa-info-circle text-blue-600 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800">What is Docify Online?</h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-blue-600 text-xl icon-rotate" id="icon-1"></i>
+                    </div>
+                    <div class="faq-answer px-6 pb-6" id="answer-1">
+                        <div class="ml-16 text-gray-600 leading-relaxed border-l-4 border-blue-200 pl-6">
+                            <p class="mb-3">
+                                <strong class="text-blue-700">Docify Online</strong> is a comprehensive digital healthcare platform that revolutionizes how you access medical services.
+                            </p>
+                            <ul class="space-y-2">
+                                <li class="flex items-start">
+                                    <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                                    <span>Fill out medical certificates and consultation forms online</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                                    <span>AI-powered chatbot for instant health guidance</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                                    <span>Connect with qualified healthcare professionals 24/7</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 2 -->
+                <div class="faq-card bg-white rounded-2xl shadow-lg overflow-hidden fade-in-up" style="animation-delay: 0.2s;" onclick="toggleFAQ(2)">
+                    <div class="flex items-center justify-between p-6 cursor-pointer">
+                        <div class="flex items-center space-x-4 flex-1">
+                            <div class="bg-blue-100 p-3 rounded-xl">
+                                <i class="fas fa-file-medical text-blue-600 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800">How do I submit a consultation form?</h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-blue-600 text-xl icon-rotate" id="icon-2"></i>
+                    </div>
+                    <div class="faq-answer px-6 pb-6" id="answer-2">
+                        <div class="ml-16 text-gray-600 leading-relaxed border-l-4 border-blue-200 pl-6">
+                            <p class="mb-3">Submitting a consultation form is quick and easy:</p>
+                            <ol class="space-y-3">
+                                <li class="flex items-start">
+                                    <span class="bg-blue-600 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold mr-3 flex-shrink-0">1</span>
+                                    <span><strong>Log in</strong> to your Docify Online account</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="bg-blue-600 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold mr-3 flex-shrink-0">2</span>
+                                    <span>Navigate to your <strong>Dashboard</strong></span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="bg-blue-600 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold mr-3 flex-shrink-0">3</span>
+                                    <span>Fill out the consultation form with detailed <strong>symptoms</strong></span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="bg-blue-600 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold mr-3 flex-shrink-0">4</span>
+                                    <span>Click <strong>"Submit"</strong> and wait for our medical team's response</span>
+                                </li>
+                            </ol>
+                            <p class="mt-3 bg-blue-50 p-3 rounded-lg">
+                                <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+                                <em>You can also update or edit your past submissions anytime!</em>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 3 -->
+                <div class="faq-card bg-white rounded-2xl shadow-lg overflow-hidden fade-in-up" style="animation-delay: 0.3s;" onclick="toggleFAQ(3)">
+                    <div class="flex items-center justify-between p-6 cursor-pointer">
+                        <div class="flex items-center space-x-4 flex-1">
+                            <div class="bg-blue-100 p-3 rounded-xl">
+                                <i class="fas fa-shield-alt text-blue-600 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800">Is my data secure?</h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-blue-600 text-xl icon-rotate" id="icon-3"></i>
+                    </div>
+                    <div class="faq-answer px-6 pb-6" id="answer-3">
+                        <div class="ml-16 text-gray-600 leading-relaxed border-l-4 border-blue-200 pl-6">
+                            <p class="mb-3"><strong class="text-blue-700">Absolutely!</strong> Your security and privacy are our top priorities.</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                <div class="bg-green-50 p-4 rounded-lg">
+                                    <i class="fas fa-lock text-green-600 text-2xl mb-2"></i>
+                                    <h4 class="font-bold text-gray-800 mb-1">Encryption</h4>
+                                    <p class="text-sm">Industry-standard password hashing (pbkdf2:sha256)</p>
+                                </div>
+                                <div class="bg-green-50 p-4 rounded-lg">
+                                    <i class="fas fa-database text-green-600 text-2xl mb-2"></i>
+                                    <h4 class="font-bold text-gray-800 mb-1">Secure Storage</h4>
+                                    <p class="text-sm">Data stored in encrypted databases</p>
+                                </div>
+                                <div class="bg-green-50 p-4 rounded-lg">
+                                    <i class="fas fa-user-shield text-green-600 text-2xl mb-2"></i>
+                                    <h4 class="font-bold text-gray-800 mb-1">Privacy</h4>
+                                    <p class="text-sm">HIPAA-compliant data handling</p>
+                                </div>
+                                <div class="bg-green-50 p-4 rounded-lg">
+                                    <i class="fas fa-check-double text-green-600 text-2xl mb-2"></i>
+                                    <h4 class="font-bold text-gray-800 mb-1">Verified</h4>
+                                    <p class="text-sm">Regular security audits</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 4 -->
+                <div class="faq-card bg-white rounded-2xl shadow-lg overflow-hidden fade-in-up" style="animation-delay: 0.4s;" onclick="toggleFAQ(4)">
+                    <div class="flex items-center justify-between p-6 cursor-pointer">
+                        <div class="flex items-center space-x-4 flex-1">
+                            <div class="bg-blue-100 p-3 rounded-xl">
+                                <i class="fas fa-robot text-blue-600 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800">How does the chatbot work?</h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-blue-600 text-xl icon-rotate" id="icon-4"></i>
+                    </div>
+                    <div class="faq-answer px-6 pb-6" id="answer-4">
+                        <div class="ml-16 text-gray-600 leading-relaxed border-l-4 border-blue-200 pl-6">
+                            <p class="mb-3">Our AI-powered medical assistant is available on your dashboard and provides:</p>
+                            <div class="space-y-3">
+                                <div class="flex items-start bg-blue-50 p-3 rounded-lg">
+                                    <i class="fas fa-comments text-blue-600 text-xl mr-3 mt-1"></i>
+                                    <div>
+                                        <strong>Instant Answers</strong>
+                                        <p class="text-sm">Get immediate responses to health-related questions</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start bg-blue-50 p-3 rounded-lg">
+                                    <i class="fas fa-map-signs text-blue-600 text-xl mr-3 mt-1"></i>
+                                    <div>
+                                        <strong>Platform Guidance</strong>
+                                        <p class="text-sm">Learn how to use Docify Online features</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start bg-blue-50 p-3 rounded-lg">
+                                    <i class="fas fa-book-medical text-blue-600 text-xl mr-3 mt-1"></i>
+                                    <div>
+                                        <strong>General Health Info</strong>
+                                        <p class="text-sm">Access reliable medical information</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="mt-3 bg-yellow-50 p-3 rounded-lg border-l-4 border-yellow-400">
+                                <i class="fas fa-exclamation-triangle text-yellow-600 mr-2"></i>
+                                <strong>Note:</strong> For specific medical advice, please submit a consultation form.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 5 -->
+                <div class="faq-card bg-white rounded-2xl shadow-lg overflow-hidden fade-in-up" style="animation-delay: 0.5s;" onclick="toggleFAQ(5)">
+                    <div class="flex items-center justify-between p-6 cursor-pointer">
+                        <div class="flex items-center space-x-4 flex-1">
+                            <div class="bg-blue-100 p-3 rounded-xl">
+                                <i class="fas fa-clock text-blue-600 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800">What are your operating hours?</h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-blue-600 text-xl icon-rotate" id="icon-5"></i>
+                    </div>
+                    <div class="faq-answer px-6 pb-6" id="answer-5">
+                        <div class="ml-16 text-gray-600 leading-relaxed border-l-4 border-blue-200 pl-6">
+                            <div class="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-xl">
+                                <div class="flex items-center space-x-3 mb-3">
+                                    <i class="fas fa-calendar-check text-blue-600 text-3xl"></i>
+                                    <div>
+                                        <h4 class="text-2xl font-bold text-blue-700">24/7 Availability</h4>
+                                        <p class="text-sm text-blue-600">Always here when you need us</p>
+                                    </div>
+                                </div>
+                                <p class="text-gray-700">
+                                    Docify Online never sleeps! Access our platform anytime:
+                                </p>
+                                <ul class="mt-3 space-y-2">
+                                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Submit consultation forms</li>
+                                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>View medical records</li>
+                                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Chat with our AI assistant</li>
+                                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Update your profile</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 6 -->
+                <div class="faq-card bg-white rounded-2xl shadow-lg overflow-hidden fade-in-up" style="animation-delay: 0.6s;" onclick="toggleFAQ(6)">
+                    <div class="flex items-center justify-between p-6 cursor-pointer">
+                        <div class="flex items-center space-x-4 flex-1">
+                            <div class="bg-blue-100 p-3 rounded-xl">
+                                <i class="fas fa-headset text-blue-600 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800">How can I contact support?</h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-blue-600 text-xl icon-rotate" id="icon-6"></i>
+                    </div>
+                    <div class="faq-answer px-6 pb-6" id="answer-6">
+                        <div class="ml-16 text-gray-600 leading-relaxed border-l-4 border-blue-200 pl-6">
+                            <p class="mb-4">We're here to help! Contact us through:</p>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="text-center bg-blue-50 p-4 rounded-lg">
+                                    <i class="fas fa-robot text-blue-600 text-3xl mb-2"></i>
+                                    <h4 class="font-bold mb-1">Chatbot</h4>
+                                    <p class="text-sm">Instant assistance</p>
+                                </div>
+                                <div class="text-center bg-blue-50 p-4 rounded-lg">
+                                    <i class="fas fa-envelope text-blue-600 text-3xl mb-2"></i>
+                                    <h4 class="font-bold mb-1">Email</h4>
+                                    <p class="text-sm">support@docify.online</p>
+                                </div>
+                                <div class="text-center bg-blue-50 p-4 rounded-lg">
+                                    <i class="fas fa-clock text-blue-600 text-3xl mb-2"></i>
+                                    <h4 class="font-bold mb-1">Response Time</h4>
+                                    <p class="text-sm">Within 24 hours</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Call to Action -->
+            <div class="mt-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-3xl shadow-2xl p-8 md:p-12 text-white text-center fade-in-up" style="animation-delay: 0.7s;">
+                <i class="fas fa-lightbulb text-5xl mb-4"></i>
+                <h3 class="text-3xl font-bold mb-4">Still have questions?</h3>
+                <p class="text-lg mb-6 text-blue-100">Our team is ready to help you with any concerns or queries you may have.</p>
+                {% if 'user_id' not in session %}
+                    <a href="{{ url_for('register') }}" class="inline-flex items-center space-x-2 bg-white text-blue-600 px-8 py-4 rounded-xl font-bold hover:bg-blue-50 transition shadow-lg">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Get Started Now</span>
+                    </a>
                 {% else %}
-                    <a href="{{ url_for('login') }}" class="px-2">Login</a>
-                    <a href="{{ url_for('register') }}" class="px-2">Register</a>
+                    <a href="{{ url_for('dashboard') }}" class="inline-flex items-center space-x-2 bg-white text-blue-600 px-8 py-4 rounded-xl font-bold hover:bg-blue-50 transition shadow-lg">
+                        <i class="fas fa-comments"></i>
+                        <span>Chat with Our Assistant</span>
+                    </a>
                 {% endif %}
-            </nav>
-        </div>
-    </header>
-    <main class="container mx-auto p-4">
-        <h2 class="text-3xl font-semibold mb-4">Frequently Asked Questions</h2>
-        <div class="space-y-4">
-            <div>
-                <h3 class="text-xl font-semibold">What is Docify Online?</h3>
-                <p>Docify Online is a platform for filling out medical certificates and consultation forms, with support from our chatbot.</p>
-            </div>
-            <div>
-                <h3 class="text-xl font-semibold">How do I submit a consultation form?</h3>
-                <p>Log in, go to the dashboard, and fill out the form with your symptoms. You can also update past submissions.</p>
-            </div>
-            <div>
-                <h3 class="text-xl font-semibold">Is my data secure?</h3>
-                <p>Yes, we use password hashing and store data securely in a database. User details are also exported to a CSV file.</p>
             </div>
         </div>
     </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8 mt-16">
+        <div class="container mx-auto px-6 text-center">
+            <p class="flex items-center justify-center space-x-2 mb-2">
+                <i class="fas fa-heartbeat"></i>
+                <span>&copy; 2025 Docify Online. All rights reserved.</span>
+            </p>
+            <p class="text-sm text-gray-400">Your health, our priority</p>
+        </div>
+    </footer>
+
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleFAQ(id) {
+        const answer = document.getElementById(`answer-${id}`);
+        const icon = document.getElementById(`icon-${id}`);
+        const isActive = answer.classList.contains('active');
+        document.querySelectorAll('.faq-answer').forEach(el => { el.classList.remove('active'); el.style.maxHeight = null; el.style.opacity = 0; });
+        document.querySelectorAll('.icon-rotate').forEach(el => el.classList.remove('active'));
+        if (!isActive) {
+            answer.classList.add('active');
+            answer.style.maxHeight = answer.scrollHeight + 'px';
+            answer.style.opacity = 1;
+            icon.classList.add('active');
+        }
+    }
+</script>
+{% endblock %}
+            }
+            
+            // Toggle current FAQ
+            answer.classList.toggle('active');
+            icon.classList.toggle('active');
+        }
+
+        // Trigger animations on scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animationPlayState = 'running';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.fade-in-up').forEach(el => {
+            el.style.animationPlayState = 'paused';
+            observer.observe(el);
+        });
+    </script>
 </body>
 </html>

@@ -11,7 +11,10 @@ app = Flask(__name__)
 # ======== FAQ Dataset ========
 
 
-vector_store=get_vector_store(r"D:\bernin\Assignment\faq.txt")
+# Resolve faq.txt relative to this file so it's portable
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FAQ_PATH = os.path.join(BASE_DIR, "faq.txt")
+vector_store = get_vector_store(FAQ_PATH)
 # ======== Retriever ========
 retriever = vector_store.as_retriever(search_kwargs={"k": 3})
 
@@ -70,5 +73,5 @@ def manual_evaluation():
 # ======== Main Entrypoint ========
 if __name__ == '__main__':
     # Comment this out in production
-    manual_evaluation()
+    # manual_evaluation()
     app.run(debug=True, port=5003)

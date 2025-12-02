@@ -11,10 +11,19 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Build args: install full ML stack or minimal
+ARG INSTALL_FULL=false
+ENV INSTALL_FULL=${INSTALL_FULL}
+
 # Install deps first for better layer caching
-COPY requirements.txt ./
+COPY requirements.txt requirements.txt
+COPY requirements-min.txt requirements-min.txt
 RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+        if [ "$INSTALL_FULL" = "true" ]; then \
+            pip install -r requirements.txt; \
+        else \
+            pip install -r requirements-min.txt; \
+        fi
 
 # Copy project
 COPY . .
@@ -22,5 +31,19 @@ COPY . .
 # Service port
 EXPOSE 5000
 
-# Default command
-CMD ["python", "app.py"]
+# Ensure instance folder exists for SQLite
+RUN mkdir -p /app/instance
+
+# Healthcheck using Python (no curl needed)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python - << 'PY'
+import urllib.request, sys
+try:
+        with urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3) as r:
+                sys.exit(0 if r.status == 200 else 1)
+except Exception:
+        sys.exit(1)
+PY
+
+# Default command (Gunicorn for production)
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]

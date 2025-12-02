@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Docify Online{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .medical-gradient { background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); }
+        .active-link { background-color: rgba(255,255,255,0.2); }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-white font-sans min-h-screen">
+    <!-- Header / Nav -->
+    <header class="medical-gradient text-white shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-heartbeat text-3xl"></i>
+                    <h1 class="text-2xl font-bold tracking-wide">Docify Online</h1>
+                </div>
+                <nav class="flex items-center space-x-2 md:space-x-4">
+                    <a href="{{ url_for('home') }}" class="flex items-center space-x-2 hover:text-blue-200 transition px-3 py-2 rounded-lg {% if request.endpoint == 'home' %}active-link{% endif %}">
+                        <i class="fas fa-home"></i><span>Home</span>
+                    </a>
+                    <a href="{{ url_for('faq') }}" class="flex items-center space-x-2 hover:text-blue-200 transition px-3 py-2 rounded-lg {% if request.endpoint == 'faq' %}active-link{% endif %}">
+                        <i class="fas fa-question-circle"></i><span>FAQ</span>
+                    </a>
+                    {% if 'user_id' in session %}
+                        <a href="{{ url_for('dashboard') }}" class="flex items-center space-x-2 hover:text-blue-200 transition px-3 py-2 rounded-lg {% if request.endpoint == 'dashboard' %}active-link{% endif %}">
+                            <i class="fas fa-th-large"></i><span>Dashboard</span>
+                        </a>
+                        <a href="{{ url_for('profile') }}" class="flex items-center space-x-2 hover:text-blue-200 transition px-3 py-2 rounded-lg {% if request.endpoint == 'profile' %}active-link{% endif %}">
+                            <i class="fas fa-user-circle"></i><span>Profile</span>
+                        </a>
+                        <a href="{{ url_for('logout') }}" class="flex items-center space-x-2 bg-white bg-opacity-20 hover:bg-opacity-30 transition px-4 py-2 rounded-lg">
+                            <i class="fas fa-sign-out-alt"></i><span>Logout</span>
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="flex items-center space-x-2 hover:text-blue-200 transition px-3 py-2 rounded-lg {% if request.endpoint == 'login' %}active-link{% endif %}">
+                            <i class="fas fa-sign-in-alt"></i><span>Login</span>
+                        </a>
+                        <a href="{{ url_for('register') }}" class="flex items-center space-x-2 bg-white bg-opacity-20 hover:bg-opacity-30 transition px-4 py-2 rounded-lg {% if request.endpoint == 'register' %}active-link{% endif %}">
+                            <i class="fas fa-user-plus"></i><span>Register</span>
+                        </a>
+                    {% endif %}
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-8">
+        {% block flashes %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="mb-6">
+                        {% for category, message in messages %}
+                            <div class="mb-3 p-4 rounded-lg shadow-md flex items-center space-x-3 border-l-4
+                                {% if category == 'success' %} bg-green-50 border-green-500 text-green-800
+                                {% elif category == 'error' %} bg-red-50 border-red-500 text-red-800
+                                {% else %} bg-blue-50 border-blue-500 text-blue-800
+                                {% endif %}">
+                                <i class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %} text-2xl"></i>
+                                <span class="font-medium">{{ message }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+        {% endblock %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-gray-800 text-white py-8 mt-12">
+        <div class="container mx-auto px-6 text-center">
+            <p class="flex items-center justify-center space-x-2 mb-2">
+                <i class="fas fa-heartbeat"></i>
+                <span>&copy; 2025 Docify Online. All rights reserved.</span>
+            </p>
+            <p class="text-sm text-gray-400">Your health, our priority</p>
+        </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

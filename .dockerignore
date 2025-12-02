@@ -1,4 +1,31 @@
-# Python caches
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pytest_cache/
+.venv/
+venv/
+
+# Local data
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Artifacts
+faiss_index/
+*.csv
+users.csv
+query_dataset.csv
+
+# Git
+.git/
+.gitignore
+
+# Model/large folders (optional)
+fine_tuning/
+uploads/# Python caches
 __pycache__/
 *.pyc
 *.pyo

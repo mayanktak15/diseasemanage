@@ -1,0 +1,6 @@
+Flask==3.0.3
+Flask-SQLAlchemy
+Werkzeug
+requests==2.32.3
+gunicorn
+python-dotenv

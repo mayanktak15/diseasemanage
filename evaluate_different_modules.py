@@ -1,44 +1,74 @@
 import os
+import warnings
+
+# Suppress all warnings
+warnings.filterwarnings('ignore')
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ['PYTHONWARNINGS'] = 'ignore::RuntimeWarning'
 
 # Try to import dependencies with error handling
-try:
-    from vector_creator import get_vector_store
-    VECTOR_STORE_AVAILABLE = True
-except ImportError as e:
-    print(f"Warning: Vector store not available: {e}")
-    VECTOR_STORE_AVAILABLE = False
+# Temporarily disable vector_creator to avoid crashes
+VECTOR_STORE_AVAILABLE = False
+get_vector_store = None
+print("Info: Vector store disabled to prevent import crashes")
 
-try:
-    from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
-    TRANSFORMERS_AVAILABLE = True
-except ImportError as e:
-    print(f"Warning: Transformers not available: {e}")
-    TRANSFORMERS_AVAILABLE = False
+# Temporarily disable transformers to avoid crashes
+TRANSFORMERS_AVAILABLE = False
+print("Info: Transformers disabled to prevent import crashes")
 
-try:
-    from langchain.chains import RetrievalQA
-    from langchain_community.llms import HuggingFacePipeline
-    from langchain.prompts import PromptTemplate
-    from langchain_core.output_parsers import StrOutputParser
-    LANGCHAIN_AVAILABLE = True
-except ImportError as e:
-    print(f"Warning: LangChain not available: {e}")
-    LANGCHAIN_AVAILABLE = False
+# Temporarily disable langchain to avoid crashes  
+LANGCHAIN_AVAILABLE = False
+print("Info: LangChain disabled to prevent import crashes")
 
-try:
-    import torch
-    TORCH_AVAILABLE = True
-except ImportError as e:
-    print(f"Warning: PyTorch not available: {e}")
-    TORCH_AVAILABLE = False
+# Temporarily disable torch to avoid crashes
+TORCH_AVAILABLE = False
+print("Info: PyTorch disabled to prevent import crashes")
+
+# Define minimal stubs so import-time name resolution succeeds when libs are unavailable
+def pipeline(*args, **kwargs):
+    raise RuntimeError("transformers.pipeline is unavailable")
+class AutoTokenizer:
+    @staticmethod
+    def from_pretrained(*args, **kwargs):
+        raise RuntimeError("transformers.AutoTokenizer unavailable")
+class AutoModelForSeq2SeqLM:
+    @staticmethod
+    def from_pretrained(*args, **kwargs):
+        raise RuntimeError("transformers.AutoModelForSeq2SeqLM unavailable")
+
+class torch:  # type: ignore
+    bfloat16 = None
+
+class HuggingFacePipeline:  # type: ignore
+    def __init__(self, *args, **kwargs):
+        pass
+
+class RetrievalQA:  # type: ignore
+    @classmethod
+    def from_chain_type(cls, *args, **kwargs):
+        return cls()
+    def __call__(self, *args, **kwargs):
+        return {"result": ""}
+
+class PromptTemplate:  # type: ignore
+    def __init__(self, *args, **kwargs):
+        pass
+
+class StrOutputParser:  # type: ignore
+    def __call__(self, x):
+        return str(x)
+
+class PeftModel:  # type: ignore
+    @staticmethod
+    def from_pretrained(*args, **kwargs):
+        raise RuntimeError("peft.PeftModel unavailable")
 
 try:
     import google.generativeai as genai
     GENAI_AVAILABLE = True
 except ImportError as e:
-    print(f"Warning: Google Generative AI not available: {e}")
+    print("Warning: Google Generative AI not available")
     GENAI_AVAILABLE = False
 
 try:
@@ -54,10 +84,10 @@ api_key = os.getenv("API_KEY") or os.getenv("GOOGLE_API_KEY")
 
 if api_key and GENAI_AVAILABLE:
     genai.configure(api_key=api_key)
-    print(f"Google API configured with key: {api_key[:10]}...")
+    # Masked log to avoid leaking keys
+    print("Google API configured with key: ******")
 else:
     print("Warning: No Google API key found or Google AI not available")
-    print("Available environment variables:", [k for k in os.environ.keys() if 'API' in k])
 
 
 # Suppress TensorFlow and duplicate library issues
@@ -132,19 +162,33 @@ We connect you with qualified healthcare professionals 24/7 for medical consulta
         
 What would you like to know about our platform?"""
     
-    elif any(health_term in query_lower for health_term in ["pain", "headache", "cough", "cold", "sick", "unwell", "symptoms"]):
-        return """I understand you're experiencing health concerns. While I can provide general information about Docify Online's services, I cannot provide specific medical advice.
+    elif "fever" in query_lower:
+        return """**About Fever:**
+Fever is a common symptom where your body temperature rises above normal (usually above 100.4°F/38°C). It's often your body's way of fighting infection.
 
-🏥 **For medical concerns:**
-Please fill out a consultation form on your dashboard with your specific symptoms. Our qualified doctors will review your case and provide appropriate medical guidance.
+**General Tips:**
+• Stay hydrated with water and fluids
+• Rest adequately
+• Monitor your temperature regularly
+• Use a cool compress if needed
 
-📋 **How to get help:**
-1. Go to your dashboard
-2. Click "Submit Consultation Form"
-3. Describe your symptoms in detail
-4. Our medical team will respond promptly
+**When to consult a doctor:**
+If fever persists for more than 2-3 days, is very high (above 103°F), or accompanied by severe symptoms, please submit a consultation form on your dashboard for professional medical advice.
 
-This ensures you receive proper medical attention from qualified healthcare professionals."""
+Would you like to know more about any other symptoms or how to use Docify's services?"""
+    
+    elif any(health_term in query_lower for health_term in ["pain", "headache", "cough", "cold", "sick", "unwell"]):
+        return """I can help with general information about common symptoms!
+
+**For immediate guidance:**
+• **Headache**: Rest in a quiet, dark room, stay hydrated
+• **Cough/Cold**: Get plenty of rest, drink warm fluids, use a humidifier
+• **General pain**: Rest the affected area, apply ice/heat as appropriate
+
+**Need professional advice?**
+If symptoms are severe or persistent, please submit a consultation form on your dashboard. Our qualified doctors will review your case and provide personalized medical guidance.
+
+What specific symptom would you like to know more about?"""
     
     else:
         return """I'm here to help with questions about Docify Online. You can ask me about:
@@ -336,12 +380,23 @@ def process_query5(user_query, symptom=None):
             top_docs = []
         
         summary = model.generate_content(contents=(
-            f"U are a chatbot for docify answer in minmum words about the faq user ask "
-            f"Docify is an online platform that allows users to consult certified doctors from the comfort of their home. Whether it's a minor health concern or the need for a medical certificate"
-            f"now user can ask unreleveant question make sure not to answer them"
-            f"do not provide any medical consultation form your side"
-            f"strictly follow the context provide to you"
-            f"query={user_query},extracted_content={top_docs}"
+            f"You are a helpful medical assistant chatbot for Docify Online.\n\n"
+            f"**About Docify:**\n"
+            f"Docify is an online platform that allows users to consult certified doctors from the comfort of their home for health concerns and medical certificates.\n\n"
+            f"**Your Role:**\n"
+            f"- Provide general health information and guidance about common symptoms\n"
+            f"- Answer questions about Docify's services and features\n"
+            f"- Help users understand when to seek professional medical consultation\n"
+            f"- Be friendly, informative, and supportive\n\n"
+            f"**Guidelines:**\n"
+            f"- Provide helpful information about common health concerns like fever, cold, cough, headaches, etc.\n"
+            f"- For serious symptoms or diagnosis requests, recommend submitting a consultation form on the dashboard\n"
+            f"- Do NOT prescribe medications or provide specific medical diagnoses\n"
+            f"- Keep responses concise, clear, and friendly (2-4 sentences)\n"
+            f"- For unrelated questions (sports, weather, etc.), politely redirect to health/platform topics\n\n"
+            f"**User Query:** {user_query}\n"
+            f"**Context from FAQ:** {top_docs}\n\n"
+            f"Provide a helpful, friendly response:"
         ))
 
         return summary.text

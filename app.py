@@ -2,15 +2,25 @@ import os
 import csv
 import requests
 import ipaddress
+import warnings
+import logging
+
+# Suppress NumPy warnings on Windows
+warnings.filterwarnings('ignore', category=RuntimeWarning)
+warnings.filterwarnings('ignore', message='.*MINGW-W64.*')
+os.environ['PYTHONWARNINGS'] = 'ignore::RuntimeWarning'
+
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+
 try:
     from evaluate_different_modules import process_query5,process_query2,process_query4,process_query,process_query3
     ADVANCED_MODULES_AVAILABLE = True
 except ImportError as e:
-    print(f"Warning: Advanced modules not available: {e}")
+    ADVANCED_MODULES_AVAILABLE = False
+except Exception as e:
     ADVANCED_MODULES_AVAILABLE = False
 
 # Import the simple FAQ responses as fallback (from existing helper module)
@@ -46,7 +56,18 @@ except ImportError:
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-fallback-secret-key')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///docify.db'
+
+# Basic logging setup
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+logger = logging.getLogger(__name__)
+
+# Keep SQLite database under the instance folder (not source tree)
+try:
+    os.makedirs(app.instance_path, exist_ok=True)
+except Exception:
+    pass
+db_path = os.path.join(app.instance_path, 'docify.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -73,8 +94,8 @@ def limit_remote_addr():
         # If behind proxy, get the first IP
         client_ip = client_ip.split(',')[0].strip()
     
-    # Skip IP check for health check endpoints (optional)
-    if request.endpoint in ['health', 'status']:
+    # Skip IP check for health/static endpoints (optional)
+    if request.endpoint in ['health', 'status', 'static']:
         return
     
     if not is_ip_allowed(client_ip):
@@ -87,6 +108,63 @@ def health():
     return jsonify(status="ok"), 200
 
 
+# -------------------- Helpers & Decorators --------------------
+from functools import wraps
+
+def get_current_user():
+    uid = session.get('user_id')
+    if not uid:
+        return None
+    return User.query.get(uid)
+
+def login_required_page(view_func):
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to continue.', 'error')
+            return redirect(url_for('login'))
+        return view_func(*args, **kwargs)
+    return wrapper
+
+def login_required_json(view_func):
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({"success": False, "message": "Please log in"}), 401
+        return view_func(*args, **kwargs)
+    return wrapper
+
+def safe_commit(success_message: str | None = None, error_message: str | None = None) -> bool:
+    try:
+        db.session.commit()
+        if success_message:
+            flash(success_message, 'success')
+        return True
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"DB commit failed: {e}")
+        if error_message:
+            flash(error_message, 'error')
+        return False
+
+def safe_commit_json() -> tuple[bool, str | None]:
+    try:
+        db.session.commit()
+        return True, None
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"DB commit failed: {e}")
+        return False, str(e)
+
+
+@app.after_request
+def add_security_headers(response):
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'DENY')
+    response.headers.setdefault('Referrer-Policy', 'no-referrer')
+    return response
+
+
 # Database Models
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -94,13 +172,23 @@ class User(db.Model):
     phone = db.Column(db.String(15), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
+    age = db.Column(db.Integer, nullable=True)
+    gender = db.Column(db.String(10), nullable=True)
+    blood_group = db.Column(db.String(5), nullable=True)
+    medical_history = db.Column(db.Text, nullable=True)
+    allergies = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 class Consultation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     symptoms = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default='pending')  # pending, reviewed, completed
+    doctor_notes = db.Column(db.Text, nullable=True)  # Doctor's response/advice
+    priority = db.Column(db.String(10), default='normal')  # low, normal, high, urgent
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     user = db.relationship('User', backref=db.backref('consultations', lazy=True))
 
 
@@ -112,7 +200,7 @@ with app.app_context():
 # Export User Details to CSV
 def export_users_to_csv():
     users = User.query.all()
-    with open('users.csv', 'w', newline='') as csvfile:
+    with open('users.csv', 'w', newline='', encoding='utf-8') as csvfile:
         fieldnames = ['id', 'name', 'phone', 'email']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
@@ -180,30 +268,34 @@ def logout():
 
 
 @app.route('/dashboard', methods=['GET', 'POST'])
+@login_required_page
 def dashboard():
-    if 'user_id' not in session:
-        flash('Please log in to access the dashboard.', 'error')
+    user = get_current_user()
+    
+    # Check if user exists
+    if not user:
+        session.pop('user_id', None)
+        flash('User not found. Please log in again.', 'error')
         return redirect(url_for('login'))
-
-    user = User.query.get(session['user_id'])
+    
     if request.method == 'POST':
         symptoms = request.form['symptoms']
         consultation = Consultation(user_id=user.id, symptoms=symptoms)
         db.session.add(consultation)
-        db.session.commit()
-        flash('Consultation form submitted successfully!', 'success')
+        if safe_commit('Consultation form submitted successfully!'):
+            return redirect(url_for('dashboard'))
         return redirect(url_for('dashboard'))
 
-    consultations = Consultation.query.filter_by(user_id=user.id).all()
+    consultations = (Consultation.query
+                     .filter_by(user_id=user.id)
+                     .order_by(Consultation.created_at.desc())
+                     .all())
     return render_template('dash.html', user=user, consultations=consultations)
 
 
 @app.route('/update_consultation/<int:id>', methods=['GET', 'POST'])
+@login_required_page
 def update_consultation(id):
-    if 'user_id' not in session:
-        flash('Please log in to update consultations.', 'error')
-        return redirect(url_for('login'))
-
     consultation = Consultation.query.get_or_404(id)
     if consultation.user_id != session['user_id']:
         flash('Unauthorized access.', 'error')
@@ -211,9 +303,9 @@ def update_consultation(id):
 
     if request.method == 'POST':
         consultation.symptoms = request.form['symptoms']
-        consultation.created_at = datetime.utcnow()
-        db.session.commit()
-        flash('Consultation updated successfully!', 'success')
+        consultation.updated_at = datetime.utcnow()
+        if safe_commit('Consultation updated successfully!'):
+            return redirect(url_for('dashboard'))
         return redirect(url_for('dashboard'))
 
     return render_template('update_consultation.html', consultation=consultation)
@@ -224,20 +316,86 @@ def faq():
     return render_template('faq.html')
 
 
+# Delete Consultation Route
+@app.route('/delete_consultation/<int:id>', methods=['POST'])
+@login_required_json
+def delete_consultation(id):
+    consultation = Consultation.query.get_or_404(id)
+    if consultation.user_id != session['user_id']:
+        return jsonify({"success": False, "message": "Unauthorized"}), 403
+    
+    db.session.delete(consultation)
+    ok, err = safe_commit_json()
+    if ok:
+        return jsonify({"success": True, "message": "Consultation deleted successfully"})
+    return jsonify({"success": False, "message": f"Delete failed: {err}"}), 500
+
+
+# User Profile Route
+@app.route('/profile', methods=['GET', 'POST'])
+@login_required_page
+def profile():
+    user = get_current_user()
+    if not user:
+        session.clear()
+        flash('User not found. Please log in again.', 'error')
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        user.name = request.form.get('name', user.name)
+        user.phone = request.form.get('phone', user.phone)
+        user.age = request.form.get('age', type=int)
+        user.gender = request.form.get('gender')
+        user.blood_group = request.form.get('blood_group')
+        user.medical_history = request.form.get('medical_history')
+        user.allergies = request.form.get('allergies')
+        
+        if safe_commit('Profile updated successfully!'):
+            return redirect(url_for('profile'))
+        return redirect(url_for('profile'))
+    
+    return render_template('profile.html', user=user)
+
+
+# Update Consultation Status (for admin/doctor use)
+@app.route('/update_status/<int:id>', methods=['POST'])
+@login_required_json
+def update_status(id):
+    consultation = Consultation.query.get_or_404(id)
+    
+    data = request.json
+    new_status = data.get('status')
+    doctor_notes = data.get('doctor_notes')
+    
+    if new_status:
+        consultation.status = new_status
+    if doctor_notes:
+        consultation.doctor_notes = doctor_notes
+    
+    consultation.updated_at = datetime.utcnow()
+    ok, err = safe_commit_json()
+    if ok:
+        return jsonify({"success": True, "message": "Status updated successfully"})
+    return jsonify({"success": False, "message": f"Update failed: {err}"}), 500
+
+
 # Updated Chatbot Route
 @app.route('/chatbot', methods=['POST'])
 def chatbot():
 
     data = request.json
     query = data.get('message')
-    print("user query=",query)
+    logger.info("chatbot query received")
     if not query:
         return jsonify({"reply": "Please provide a message."}), 400
     try:
-        with open("query_dataset.csv", "a") as file:
-            file.write(query + "\n")
+        # Append user message for analysis (UTF-8)
+        with open("query_dataset.csv", "a", encoding='utf-8', newline='') as file:
+            # Replace newlines to keep one line per entry
+            safe_query = (query or "").replace('\r', ' ').replace('\n', ' ').strip()
+            file.write(safe_query + "\n")
     except Exception as e:
-        print(f"Error while writing to file: {e}")
+        logger.warning(f"Could not append to query_dataset.csv: {e}")
     # Get latest symptoms from user's consultations
     if 'user_id' in session:
         latest_consultation = Consultation.query.filter_by(user_id=session['user_id']).order_by(
@@ -251,7 +409,7 @@ def chatbot():
         # Try advanced chatbot function first
         if ADVANCED_MODULES_AVAILABLE:
             response = process_query5(query, symptoms)
-            print("Chatbot response:", response)
+            logger.info("chatbot response generated")
             
             # Check if response is valid
             if response and response.strip():
@@ -266,7 +424,7 @@ def chatbot():
             return jsonify({"reply": "I'm sorry, I couldn't generate a response. Please try asking about Docify Online services."})
             
     except Exception as e:
-        print(f"Error in chatbot endpoint: {e}")
+        logger.exception(f"Error in chatbot endpoint: {e}")
         
         # Try FAQ fallback
         if FAQ_AVAILABLE:
@@ -288,6 +446,25 @@ def chatbot():
         """
         return jsonify({"reply": fallback_response.strip()})
 
+
+# Friendly error handlers (register globally so they work under Gunicorn too)
+@app.errorhandler(403)
+def forbidden(e):
+    if request.accept_mimetypes.accept_html and not request.is_json:
+        return render_template('error_403.html'), 403
+    return jsonify(error='Forbidden'), 403
+
+@app.errorhandler(404)
+def not_found(e):
+    if request.accept_mimetypes.accept_html and not request.is_json:
+        return render_template('error_404.html'), 404
+    return jsonify(error='Not Found'), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    if request.accept_mimetypes.accept_html and not request.is_json:
+        return render_template('error_500.html'), 500
+    return jsonify(error='Internal Server Error'), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=False, port=5000)

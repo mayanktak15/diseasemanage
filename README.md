@@ -11,6 +11,36 @@ A Flask-based web app for simple medical consultation workflows with login/regis
 - IP allowlist for incoming requests (secure by default)
 - Health check endpoint at `/health`
 
+## Endpoints
+
+- `GET /` — Home page
+- `GET /login` — Login form
+- `GET /register` — Registration form
+- `GET, POST /dashboard` — Submit consultation (POST), view your consultations (GET)
+- `GET, POST /update_consultation/<id>` — Edit an existing consultation you own
+- `POST /delete_consultation/<id>` — Delete a consultation you own (returns JSON)
+- `GET, POST /profile` — View/update profile details
+- `GET /faq` — FAQ page
+- `POST /chatbot` — Chatbot API (JSON)
+- `GET /health` — Health probe (JSON: {"status":"ok"})
+
+Chatbot API example (JSON):
+
+Request body:
+```json
+{
+	"message": "What is Docify Online?",
+	"symptoms": "Fever and headache for 2 days"
+}
+```
+
+Response body (example):
+```json
+{
+	"reply": "Docify Online is a platform for filling out medical certificates and consultation forms, with support from our chatbot."
+}
+```
+
 ## Requirements
 
 - Windows (tested) or any OS with Python 3.10+
@@ -54,6 +84,17 @@ python testsprite.py
 
 All tests should pass without ML/AI libraries installed.
 
+## Tests
+
+Single consolidated test file using Flask’s test client:
+
+```powershell
+python testsprite.py
+```
+
+Notes:
+- Tests don’t require ML dependencies; the app falls back to simple FAQ responses.
+
 ## Full setup (ML/AI features)
 
 To enable RAG and model-backed chat variants you can install the full dependency set:
@@ -80,6 +121,49 @@ python app2.py
 Notes:
 - These ML options are heavier and may require GPU/large downloads.
 - The main `app.py` does not require them to function; it falls back safely.
+
+## Docker
+
+Build a minimal, fast image (no ML dependencies; the app falls back to simple FAQ):
+
+```powershell
+docker build -t docify:mini --build-arg INSTALL_FULL=false .
+docker run --rm -p 5000:5000 -e SECRET_KEY=change-me -e ALLOWED_IPS="0.0.0.0/0" docify:mini
+```
+
+Build with full ML stack (heavier image due to transformers/torch/langchain):
+
+```powershell
+docker build -t docify:full --build-arg INSTALL_FULL=true .
+docker run --rm -p 5000:5000 -e SECRET_KEY=change-me -e ALLOWED_IPS="0.0.0.0/0" docify:full
+```
+
+Details:
+- The image serves via Gunicorn on port 5000 and includes a healthcheck at `/health`.
+- SQLite database is created inside the container at `/app/instance/docify.db`.
+- Adjust `ALLOWED_IPS` as needed; the Docker default is permissive.
+
+### Compose (optional)
+
+If you want persistence across container restarts, mount a volume for the instance folder. Example `docker-compose.yml` sketch:
+
+```yaml
+services:
+	docify:
+		build:
+			context: .
+			args:
+				INSTALL_FULL: "false"
+		image: docify:mini
+		container_name: docify
+		ports:
+			- "5000:5000"
+		environment:
+			SECRET_KEY: change-me
+			ALLOWED_IPS: 0.0.0.0/0
+		volumes:
+			- ./data/instance:/app/instance
+```
 
 ## IP allowlist
 
@@ -139,6 +223,14 @@ These are ignored by `.gitignore`.
 - Import errors for ML libs: they are optional unless you run the ML chatbots; install via `requirements.txt`.
 - Port already in use: stop the conflicting service or change `app.run(..., port=5000)`.
 - Ollama model not found: ensure Ollama is running and the `docify` model is available for the Llama-based chatbot.
+- Chatbot service ports: the optional microservices listen on their own ports (T5 ~5001, LoRA T5 ~5002, Ollama ~5003). The main app `app.py` uses an internal fallback unless you run and proxy to them.
+ - Old helper test files (`test_chatbot.py`, `test_fixes.py`, `test_import.py`) are deprecated and kept as stubs. Use `testsprite.py`.
+
+## Development tips
+
+- The app writes user messages to `query_dataset.csv` for later analysis. You can disable that in `app.py` if needed.
+- The SQLite database and other runtime files are kept out of the source tree in the `instance/` folder for safety. In Docker, this is `/app/instance`.
+- For advanced chatbot features, see `chatbot.py`, `chatbot2.py`, and `chatbot3usingllama2formollama.py`. They’ve been cleaned up to avoid hardcoded paths and duplicated initializations.
 
 ## License
 

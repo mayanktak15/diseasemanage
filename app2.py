@@ -1,14 +1,26 @@
 import os
 import csv
 import requests
+import logging
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///docify.db'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-fallback-secret-key')
+
+# Basic logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+logger = logging.getLogger(__name__)
+
+# Use instance-scoped SQLite DB like main app
+try:
+    os.makedirs(app.instance_path, exist_ok=True)
+except Exception:
+    pass
+db_path = os.path.join(app.instance_path, 'docify.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -38,7 +50,7 @@ with app.app_context():
 # Export User Details to CSV
 def export_users_to_csv():
     users = User.query.all()
-    with open('users.csv', 'w', newline='') as csvfile:
+    with open('users.csv', 'w', newline='', encoding='utf-8') as csvfile:
         fieldnames = ['id', 'name', 'phone', 'email']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
@@ -136,7 +148,11 @@ def update_consultation(id):
 
     if request.method == 'POST':
         consultation.symptoms = request.form['symptoms']
-        consultation.created_at = datetime.utcnow()
+        # keep original created_at; update updated_at if present else leave
+        try:
+            setattr(consultation, 'updated_at', datetime.utcnow())
+        except Exception:
+            pass
         db.session.commit()
         flash('Consultation updated successfully!', 'success')
         return redirect(url_for('dashboard'))
@@ -166,16 +182,18 @@ def chatbot():
         symptoms = None
 
     try:
-        # Forward request to chatbot service
+        # Forward request to chatbot service (configurable)
+        chatbot_url = os.getenv('CHATBOT_SERVICE_URL', 'http://127.0.0.1:5003/chatbot')
         response = requests.post(
-            'http://127.0.0.1:5003/chatbot',
-            json={"message": user_message, "symptoms": symptoms}
+            chatbot_url,
+            json={"message": user_message, "symptoms": symptoms},
+            timeout=5,
         )
-        print(response)
-        response_data = response.json()
-        return jsonify(response_data)
-    except requests.RequestException:
-        return jsonify({"reply": "Error connecting to chatbot service."}), 500
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.RequestException as e:
+        logger.warning(f"Chatbot proxy error: {e}")
+        return jsonify({"reply": "Error connecting to chatbot service."}), 502
 
 
 if __name__ == '__main__':

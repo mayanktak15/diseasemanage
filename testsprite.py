@@ -175,6 +175,206 @@ class AppEndpointTests(unittest.TestCase):
         content = qfile.read_text(encoding="utf-8", errors="ignore")
         self.assertIn(msg, content)
 
+    def test_profile_update_flow(self):
+        email = f"profile_{int(time.time())}@example.com"
+        password = "ProfPass!123"
+        # Register and login
+        self.client.post(
+            "/register",
+            data={
+                "name": "Profile User",
+                "phone": "1212121212",
+                "email": email,
+                "password": password,
+            },
+            follow_redirects=True,
+        )
+        self.client.post(
+            "/login",
+            data={"email": email, "password": password},
+            follow_redirects=True,
+        )
+
+        # GET profile
+        r_get = self.client.get("/profile")
+        self.assertEqual(r_get.status_code, 200)
+
+        # POST profile update
+        r_post = self.client.post(
+            "/profile",
+            data={
+                "name": "Profile User Updated",
+                "phone": "9090909090",
+                "age": "30",
+                "gender": "Other",
+                "blood_group": "O+",
+                "medical_history": "None",
+                "allergies": "Pollen",
+            },
+            follow_redirects=True,
+        )
+        self.assertEqual(r_post.status_code, 200)
+        # Expect success flash message appears in response body
+        self.assertIn(b"Profile updated successfully", r_post.data)
+
+        # Verify in DB
+        with app.app_context():
+            u = User.query.filter_by(email=email).first()
+            self.assertIsNotNone(u)
+            self.assertEqual(u.name, "Profile User Updated")
+            self.assertEqual(u.phone, "9090909090")
+            self.assertEqual(u.age, 30)
+            self.assertEqual(u.gender, "Other")
+            self.assertEqual(u.blood_group, "O+")
+            self.assertEqual(u.medical_history, "None")
+            self.assertEqual(u.allergies, "Pollen")
+
+    def test_delete_consultation_json(self):
+        email = f"del_{int(time.time())}@example.com"
+        password = "DelPass!123"
+        # Register and login
+        self.client.post(
+            "/register",
+            data={
+                "name": "Del User",
+                "phone": "7776665555",
+                "email": email,
+                "password": password,
+            },
+            follow_redirects=True,
+        )
+        self.client.post(
+            "/login",
+            data={"email": email, "password": password},
+            follow_redirects=True,
+        )
+
+        # Create a consultation
+        self.client.post(
+            "/dashboard",
+            data={"symptoms": "Temp entry to delete"},
+            follow_redirects=True,
+        )
+
+        with app.app_context():
+            u = User.query.filter_by(email=email).first()
+            cons = Consultation.query.filter_by(user_id=u.id).order_by(Consultation.created_at.desc()).first()
+            cons_id = cons.id
+
+        # Delete via JSON route
+        r = self.client.post(f"/delete_consultation/{cons_id}")
+        self.assertEqual(r.status_code, 200)
+        data = r.get_json()
+        self.assertTrue(data.get("success"))
+
+        # Verify deletion
+        with app.app_context():
+            exists = Consultation.query.get(cons_id)
+            self.assertIsNone(exists)
+
+    def test_update_status_json(self):
+        # Unauthenticated should get 401 (use a fresh client with no session)
+        fresh_client = app.test_client()
+        r_unauth = fresh_client.post("/update_status/1", json={"status": "reviewed"})
+        self.assertEqual(r_unauth.status_code, 401)
+
+        # Create user and consultation
+        email = f"status_{int(time.time())}@example.com"
+        password = "StatPass!123"
+        self.client.post(
+            "/register",
+            data={
+                "name": "Status User",
+                "phone": "1010101010",
+                "email": email,
+                "password": password,
+            },
+            follow_redirects=True,
+        )
+        self.client.post(
+            "/login",
+            data={"email": email, "password": password},
+            follow_redirects=True,
+        )
+        self.client.post(
+            "/dashboard",
+            data={"symptoms": "Needs review"},
+            follow_redirects=True,
+        )
+
+        with app.app_context():
+            u = User.query.filter_by(email=email).first()
+            cons = Consultation.query.filter_by(user_id=u.id).order_by(Consultation.created_at.desc()).first()
+            cons_id = cons.id
+            prev_updated = cons.updated_at
+
+        # Update status
+        r = self.client.post(
+            f"/update_status/{cons_id}",
+            json={"status": "reviewed", "doctor_notes": "Checked"},
+        )
+        self.assertEqual(r.status_code, 200)
+        data = r.get_json()
+        self.assertTrue(data.get("success"))
+
+        # Verify DB updated
+        with app.app_context():
+            cons2 = Consultation.query.get(cons_id)
+            self.assertEqual(cons2.status, "reviewed")
+            self.assertEqual(cons2.doctor_notes, "Checked")
+            self.assertGreaterEqual(cons2.updated_at, prev_updated)
+
+    def test_update_consultation_timestamps(self):
+        email = f"time_{int(time.time())}@example.com"
+        password = "TimePass!123"
+        # Register/login
+        self.client.post(
+            "/register",
+            data={
+                "name": "Time User",
+                "phone": "2323232323",
+                "email": email,
+                "password": password,
+            },
+            follow_redirects=True,
+        )
+        self.client.post(
+            "/login",
+            data={"email": email, "password": password},
+            follow_redirects=True,
+        )
+        self.client.post(
+            "/dashboard",
+            data={"symptoms": "Initial"},
+            follow_redirects=True,
+        )
+
+        with app.app_context():
+            u = User.query.filter_by(email=email).first()
+            cons = Consultation.query.filter_by(user_id=u.id).order_by(Consultation.created_at.desc()).first()
+            cons_id = cons.id
+            created_at_before = cons.created_at
+            updated_at_before = cons.updated_at
+
+        # Update consultation
+        r_up_post = self.client.post(
+            f"/update_consultation/{cons_id}",
+            data={"symptoms": "Updated symptoms"},
+            follow_redirects=True,
+        )
+        self.assertEqual(r_up_post.status_code, 200)
+        self.assertIn(b"Consultation updated successfully", r_up_post.data)
+
+        with app.app_context():
+            cons2 = Consultation.query.get(cons_id)
+            self.assertEqual(cons2.symptoms, "Updated symptoms")
+            self.assertEqual(cons2.created_at, created_at_before)
+            self.assertGreaterEqual(cons2.updated_at, updated_at_before)
+
+    def test_404_error_page(self):
+        r = self.client.get("/this-route-does-not-exist")
+        self.assertEqual(r.status_code, 404)
+
     def test_register_login_dashboard_and_consultation_flow(self):
         # Unique email for this test run
         email = f"user_{int(time.time())}@example.com"
