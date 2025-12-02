@@ -71,8 +71,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# Configure allowed IP addresses/CIDR ranges
+// Configure allowed IP addresses/CIDR ranges and optional bypass
 ALLOWED_IPS = os.getenv('ALLOWED_IPS', '127.0.0.1/32').split(',')
+DISABLE_IP_FILTER = os.getenv('DISABLE_IP_FILTER', 'false').lower() in {'1','true','yes'}
 
 def is_ip_allowed(ip_address):
     """Check if the IP address is in the allowed list"""
@@ -88,6 +89,8 @@ def is_ip_allowed(ip_address):
 @app.before_request
 def limit_remote_addr():
     """Middleware to check IP address before processing requests"""
+    if DISABLE_IP_FILTER:
+        return
     # Get client IP (handle proxy headers if behind load balancer)
     client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
     if client_ip:
