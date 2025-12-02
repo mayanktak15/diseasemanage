@@ -10,6 +10,17 @@ warnings.filterwarnings('ignore', category=RuntimeWarning)
 warnings.filterwarnings('ignore', message='.*MINGW-W64.*')
 os.environ['PYTHONWARNINGS'] = 'ignore::RuntimeWarning'
 
+# Ensure SQLite driver availability on runtimes lacking stdlib sqlite3
+try:
+    import sqlite3 as _sqlite3  # noqa: F401
+except Exception:
+    try:
+        import pysqlite3 as sqlite3  # type: ignore
+        import sys as _sys
+        _sys.modules["sqlite3"] = sqlite3
+    except Exception:
+        pass
+
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -61,16 +72,29 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-fallback-secret-key')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
 
-# Keep SQLite database under the instance folder (not source tree)
+# Keep SQLite database under a writable path.
+# On Vercel, only `/tmp` is writable and is ephemeral.
 try:
     os.makedirs(app.instance_path, exist_ok=True)
 except Exception:
     pass
-db_path = os.path.join(app.instance_path, 'docify.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
+is_vercel = os.getenv('VERCEL') == '1' or bool(os.getenv('VERCEL_ENV'))
+sqlite_path_env = os.getenv('SQLITE_PATH')
+db_uri_env = os.getenv('SQLALCHEMY_DATABASE_URI') or os.getenv('DATABASE_URL')
+
+if is_vercel:
+    # Force SQLite on Vercel; use /tmp by default for write access
+    sqlite_path = sqlite_path_env or '/tmp/docify.db'
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{sqlite_path}'
+else:
+    if db_uri_env:
+        app.config['SQLALCHEMY_DATABASE_URI'] = db_uri_env
+    else:
+        sqlite_path = sqlite_path_env or os.path.join(app.instance_path, 'docify.db')
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{sqlite_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-
 # Configure allowed IP addresses/CIDR ranges and optional bypass
 ALLOWED_IPS = os.getenv('ALLOWED_IPS', '127.0.0.1/32').split(',')
 DISABLE_IP_FILTER = os.getenv('DISABLE_IP_FILTER', 'false').lower() in {'1','true','yes'}
