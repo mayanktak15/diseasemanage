@@ -3,7 +3,8 @@
 {% block extra_head %}
     <style>
         .hero-section {
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(30, 64, 175, 0.05) 100%);
+            background: linear-gradient(135deg, rgba(29, 78, 216, 0.16) 0%, rgba(14, 116, 144, 0.12) 100%);
+            border: 1px solid rgba(15, 23, 42, 0.08);
         }
     </style>
 {% endblock %}
@@ -11,10 +12,10 @@
 {% block flashes %}{{ super() }}{% endblock %}
 
 {% block content %}
-        <div class="hero-section rounded-2xl shadow-xl p-12 mb-12 text-center">
+        <div class="hero-section rounded-2xl shadow-xl p-12 mb-12 text-center app-surface">
             <div class="max-w-3xl mx-auto">
                 <i class="fas fa-hospital text-blue-600 text-6xl mb-6"></i>
-                <h2 class="text-5xl font-bold text-gray-800 mb-6">Welcome to Docify Online</h2>
+            <h2 class="text-5xl font-bold text-gray-900 mb-6 brand-title">Welcome to Docify Online</h2>
                 <p class="text-xl text-gray-600 mb-8">Your trusted platform for professional medical consultations and certificates, available 24/7 from the comfort of your home.</p>
                 <div class="flex justify-center space-x-4">
                     {% if 'user_id' not in session %}
@@ -38,21 +39,21 @@
 
         <!-- Features Section -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            <div class="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition text-center">
+            <div class="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition text-center app-surface">
                 <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                     <i class="fas fa-user-md text-blue-600 text-3xl"></i>
                 </div>
                 <h3 class="text-xl font-bold text-gray-800 mb-3">Expert Doctors</h3>
                 <p class="text-gray-600">Consult with certified medical professionals online</p>
             </div>
-            <div class="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition text-center">
+            <div class="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition text-center app-surface">
                 <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                     <i class="fas fa-clock text-blue-600 text-3xl"></i>
                 </div>
                 <h3 class="text-xl font-bold text-gray-800 mb-3">24/7 Available</h3>
                 <p class="text-gray-600">Access healthcare services anytime, anywhere</p>
             </div>
-            <div class="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition text-center">
+            <div class="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition text-center app-surface">
                 <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                     <i class="fas fa-shield-alt text-blue-600 text-3xl"></i>
                 </div>

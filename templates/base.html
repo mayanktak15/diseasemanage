@@ -5,21 +5,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Docify Online{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .medical-gradient { background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); }
-        .active-link { background-color: rgba(255,255,255,0.2); }
+        :root {
+            --ink: #0f172a;
+            --muted: #475569;
+            --accent: #1d4ed8;
+            --accent-deep: #1e3a8a;
+            --surface: #ffffff;
+            --surface-2: rgba(255, 255, 255, 0.92);
+        }
+        .app-body {
+            font-family: "Space Grotesk", system-ui, -apple-system, sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(1200px 600px at 10% -10%, rgba(29, 78, 216, 0.18), transparent 60%),
+                radial-gradient(900px 500px at 90% 10%, rgba(14, 165, 233, 0.18), transparent 55%),
+                linear-gradient(180deg, #eef2ff 0%, #f8fafc 45%, #ffffff 100%);
+            min-height: 100vh;
+        }
+        .app-body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(380px 160px at 15% 25%, rgba(15, 23, 42, 0.06), transparent 60%),
+                radial-gradient(320px 140px at 85% 15%, rgba(15, 23, 42, 0.06), transparent 55%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .app-surface {
+            background: var(--surface-2);
+            backdrop-filter: blur(10px);
+        }
+        .medical-gradient { background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%); }
+        .active-link { background-color: rgba(255,255,255,0.22); }
+        .brand-title {
+            font-family: "Fraunces", "Space Grotesk", serif;
+            letter-spacing: 0.5px;
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-white font-sans min-h-screen">
+<body class="app-body">
     <!-- Header / Nav -->
     <header class="medical-gradient text-white shadow-lg sticky top-0 z-50">
         <div class="container mx-auto px-6 py-4">
             <div class="flex justify-between items-center">
                 <div class="flex items-center space-x-3">
                     <i class="fas fa-heartbeat text-3xl"></i>
-                    <h1 class="text-2xl font-bold tracking-wide">Docify Online</h1>
+                    <h1 class="text-2xl font-bold tracking-wide brand-title">Docify Online</h1>
                 </div>
                 <nav class="flex items-center space-x-2 md:space-x-4">
                     <a href="{{ url_for('home') }}" class="flex items-center space-x-2 hover:text-blue-200 transition px-3 py-2 rounded-lg {% if request.endpoint == 'home' %}active-link{% endif %}">
@@ -51,7 +89,7 @@
         </div>
     </header>
 
-    <main class="container mx-auto px-6 py-8">
+    <main class="container mx-auto px-6 py-8 relative z-10">
         {% block flashes %}
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}

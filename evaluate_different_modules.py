@@ -1,5 +1,6 @@
 import os
 import warnings
+from difflib import SequenceMatcher
 
 # Suppress all warnings
 warnings.filterwarnings('ignore')
@@ -7,62 +8,76 @@ os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 os.environ['PYTHONWARNINGS'] = 'ignore::RuntimeWarning'
 
-# Try to import dependencies with error handling
-# Temporarily disable vector_creator to avoid crashes
+# Try to import optional dependencies with graceful fallbacks
 VECTOR_STORE_AVAILABLE = False
 get_vector_store = None
-print("Info: Vector store disabled to prevent import crashes")
+try:
+    from vector_creator import get_vector_store
+    VECTOR_STORE_AVAILABLE = True
+except Exception as e:
+    print(f"Info: Vector store unavailable: {e}")
 
-# Temporarily disable transformers to avoid crashes
 TRANSFORMERS_AVAILABLE = False
-print("Info: Transformers disabled to prevent import crashes")
+try:
+    from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
+    TRANSFORMERS_AVAILABLE = True
+except Exception as e:
+    print(f"Info: Transformers unavailable: {e}")
+    def pipeline(*args, **kwargs):
+        raise RuntimeError("transformers.pipeline is unavailable")
+    class AutoTokenizer:
+        @staticmethod
+        def from_pretrained(*args, **kwargs):
+            raise RuntimeError("transformers.AutoTokenizer unavailable")
+    class AutoModelForSeq2SeqLM:
+        @staticmethod
+        def from_pretrained(*args, **kwargs):
+            raise RuntimeError("transformers.AutoModelForSeq2SeqLM unavailable")
 
-# Temporarily disable langchain to avoid crashes  
-LANGCHAIN_AVAILABLE = False
-print("Info: LangChain disabled to prevent import crashes")
-
-# Temporarily disable torch to avoid crashes
 TORCH_AVAILABLE = False
-print("Info: PyTorch disabled to prevent import crashes")
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except Exception as e:
+    print(f"Info: PyTorch unavailable: {e}")
+    class torch:  # type: ignore
+        bfloat16 = None
 
-# Define minimal stubs so import-time name resolution succeeds when libs are unavailable
-def pipeline(*args, **kwargs):
-    raise RuntimeError("transformers.pipeline is unavailable")
-class AutoTokenizer:
-    @staticmethod
-    def from_pretrained(*args, **kwargs):
-        raise RuntimeError("transformers.AutoTokenizer unavailable")
-class AutoModelForSeq2SeqLM:
-    @staticmethod
-    def from_pretrained(*args, **kwargs):
-        raise RuntimeError("transformers.AutoModelForSeq2SeqLM unavailable")
+LANGCHAIN_AVAILABLE = False
+try:
+    from langchain_community.llms import HuggingFacePipeline
+    from langchain.chains import RetrievalQA
+    from langchain.prompts import PromptTemplate
+    from langchain_core.output_parsers import StrOutputParser
+    LANGCHAIN_AVAILABLE = True
+except Exception as e:
+    print(f"Info: LangChain unavailable: {e}")
+    class HuggingFacePipeline:  # type: ignore
+        def __init__(self, *args, **kwargs):
+            pass
+    class RetrievalQA:  # type: ignore
+        @classmethod
+        def from_chain_type(cls, *args, **kwargs):
+            return cls()
+        def __call__(self, *args, **kwargs):
+            return {"result": ""}
+    class PromptTemplate:  # type: ignore
+        def __init__(self, *args, **kwargs):
+            pass
+    class StrOutputParser:  # type: ignore
+        def __call__(self, x):
+            return str(x)
 
-class torch:  # type: ignore
-    bfloat16 = None
-
-class HuggingFacePipeline:  # type: ignore
-    def __init__(self, *args, **kwargs):
-        pass
-
-class RetrievalQA:  # type: ignore
-    @classmethod
-    def from_chain_type(cls, *args, **kwargs):
-        return cls()
-    def __call__(self, *args, **kwargs):
-        return {"result": ""}
-
-class PromptTemplate:  # type: ignore
-    def __init__(self, *args, **kwargs):
-        pass
-
-class StrOutputParser:  # type: ignore
-    def __call__(self, x):
-        return str(x)
-
-class PeftModel:  # type: ignore
-    @staticmethod
-    def from_pretrained(*args, **kwargs):
-        raise RuntimeError("peft.PeftModel unavailable")
+try:
+    from peft import PeftModel
+    PEFT_AVAILABLE = True
+except Exception as e:
+    print(f"Info: PEFT unavailable: {e}")
+    PEFT_AVAILABLE = False
+    class PeftModel:  # type: ignore
+        @staticmethod
+        def from_pretrained(*args, **kwargs):
+            raise RuntimeError("peft.PeftModel unavailable")
 
 try:
     import google.generativeai as genai
@@ -104,6 +119,44 @@ if VECTOR_STORE_AVAILABLE:
 else:
     print("Vector store not available, using simple FAQ responses only")
     retriever = None
+
+# ======== FAQ Text Match Helpers ========
+FAQ_FILE_PATH = os.getenv("FAQ_FILE_PATH", "faq.txt")
+FAQ_BLOCKS = []
+
+def _load_faq_blocks():
+    try:
+        with open(FAQ_FILE_PATH, 'r', encoding='utf-8') as handle:
+            text = handle.read()
+    except Exception as e:
+        print(f"Warning: Unable to load FAQ file: {e}")
+        return []
+
+    blocks = [block.strip() for block in text.split("\n\n") if block.strip()]
+    return blocks
+
+FAQ_BLOCKS = _load_faq_blocks()
+
+def _best_faq_block(query):
+    if not query or not FAQ_BLOCKS:
+        return None
+
+    query_lower = query.lower().strip()
+    best_score = 0.0
+    best_block = None
+    for block in FAQ_BLOCKS:
+        first_line = block.splitlines()[0] if block else ""
+        candidate = first_line.lower().strip()
+        if not candidate:
+            continue
+        score = SequenceMatcher(None, query_lower, candidate).ratio()
+        if score > best_score:
+            best_score = score
+            best_block = block
+
+    if best_score >= 0.35:
+        return best_block
+    return None
 
 # ======== Simple FAQ Response Function ========
 def get_simple_faq_response(user_query):
@@ -191,6 +244,9 @@ If symptoms are severe or persistent, please submit a consultation form on your 
 What specific symptom would you like to know more about?"""
     
     else:
+        best_block = _best_faq_block(user_query)
+        if best_block:
+            return best_block
         return """I'm here to help with questions about Docify Online. You can ask me about:
 - Our medical consultation services
 - How to submit consultation forms
@@ -223,6 +279,8 @@ def process_query(user_query, symptoms=None):
         print(f"Error in process_query: {e}")
         return get_simple_faq_response(user_query)
 def process_query2(user_query, symptoms=None):
+    if retriever is None or not LANGCHAIN_AVAILABLE:
+        return get_simple_faq_response(user_query)
     # Prepare the symptoms section if provided
     symptoms_section = f"User Symptoms: {symptoms}\nIncorporate these symptoms into your response if relevant." if symptoms else ""
 
@@ -246,6 +304,8 @@ def process_query2(user_query, symptoms=None):
 
 # Step 5: Process Query and Generate Structured Response
 def process_query3(user_query, symptoms=None):
+    if retriever is None or not LANGCHAIN_AVAILABLE or not TRANSFORMERS_AVAILABLE or not TORCH_AVAILABLE:
+        return get_simple_faq_response(user_query)
     model_id = "tiiuae/falcon-7b"
 
     text_generation_pipeline = pipeline(
@@ -289,6 +349,8 @@ def process_query3(user_query, symptoms=None):
 
 # Process Query
 def process_query4(user_query, symptoms=None):
+    if retriever is None or not LANGCHAIN_AVAILABLE or not TRANSFORMERS_AVAILABLE or not PEFT_AVAILABLE:
+        return get_simple_faq_response(user_query)
     model_name = "google/flan-t5-base"
     finetuned_path = "fine_tuning/lora_flan_t5_small/finetuned"
     tokenizer = AutoTokenizer.from_pretrained(finetuned_path)
