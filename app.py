@@ -73,26 +73,25 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 # Keep SQLite database under a writable path.
-# On Vercel, only `/tmp` is writable and is ephemeral.
+# On Render VPS, you can use /var/data (if mounted) or the instance folder.
 try:
     os.makedirs(app.instance_path, exist_ok=True)
 except Exception:
     pass
 
-is_vercel = os.getenv('VERCEL') == '1' or bool(os.getenv('VERCEL_ENV'))
+is_render = bool(os.getenv('RENDER')) or bool(os.getenv('RENDER_SERVICE_NAME')) or bool(os.getenv('RENDER_INSTANCE_ID'))
 sqlite_path_env = os.getenv('SQLITE_PATH')
 db_uri_env = os.getenv('SQLALCHEMY_DATABASE_URI') or os.getenv('DATABASE_URL')
 
-if is_vercel:
-    # Force SQLite on Vercel; use /tmp by default for write access
-    sqlite_path = sqlite_path_env or '/tmp/docify.db'
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{sqlite_path}'
+if db_uri_env:
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_uri_env
 else:
-    if db_uri_env:
-        app.config['SQLALCHEMY_DATABASE_URI'] = db_uri_env
+    if is_render and not sqlite_path_env:
+        default_render_path = '/var/data/docify.db' if os.path.isdir('/var/data') else None
+        sqlite_path = default_render_path or os.path.join(app.instance_path, 'docify.db')
     else:
         sqlite_path = sqlite_path_env or os.path.join(app.instance_path, 'docify.db')
-        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{sqlite_path}'
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{sqlite_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 # Configure allowed IP addresses/CIDR ranges and optional bypass

@@ -122,6 +122,23 @@ Notes:
 - These ML options are heavier and may require GPU/large downloads.
 - The main `app.py` does not require them to function; it falls back safely.
 
+## Render VPS
+
+Suggested setup for Render VPS (single service):
+
+- Start command: `gunicorn app:app --bind 0.0.0.0:5000`
+- Environment variables:
+	- `SECRET_KEY` — required
+	- `ALLOWED_IPS` — set to `0.0.0.0/0` or your CIDR ranges
+	- `DISABLE_IP_FILTER` — set to `true` if you want to bypass the allowlist
+	- `SQLITE_PATH` — set to `/var/data/docify.db` if you attach a disk at `/var/data`
+	- `DATABASE_URL` — optional if you prefer Postgres over SQLite
+	- `GOOGLE_API_KEY` — optional for Gemini responses
+
+Notes:
+- If `/var/data` is not present, the app defaults to `instance/docify.db`.
+- For persistent data, attach a disk and point `SQLITE_PATH` to it.
+
 ## Docker
 
 Build a minimal, fast image (no ML dependencies; the app falls back to simple FAQ):
