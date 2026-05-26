@@ -13,7 +13,7 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-fallback-secret-key')
 # Basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
-
+#ok pass
 # Use instance-scoped SQLite DB like main app
 try:
     os.makedirs(app.instance_path, exist_ok=True)
