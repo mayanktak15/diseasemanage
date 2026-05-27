@@ -37,6 +37,7 @@
         </h3>
         
         <form method="POST" class="space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <!-- Basic Information -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="input-group">
@@ -101,7 +102,7 @@
 
             <!-- Submit Button -->
             <div class="flex justify-end space-x-4 pt-4">
-                <a href="{{ url_for('dashboard') }}" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-300 font-semibold">
+                <a href="{{ url_for('dashboard.dashboard') }}" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-300 font-semibold">
                     <i class="fas fa-times mr-2"></i>Cancel
                 </a>
                 <button type="submit" class="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-semibold shadow-lg transform hover:scale-105">

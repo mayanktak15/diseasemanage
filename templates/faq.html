@@ -336,12 +336,12 @@
                 <h3 class="text-3xl font-bold mb-4">Still have questions?</h3>
                 <p class="text-lg mb-6 text-blue-100">Our team is ready to help you with any concerns or queries you may have.</p>
                 {% if 'user_id' not in session %}
-                    <a href="{{ url_for('register') }}" class="inline-flex items-center space-x-2 bg-white text-blue-600 px-8 py-4 rounded-xl font-bold hover:bg-blue-50 transition shadow-lg">
+                    <a href="{{ url_for('auth.register') }}" class="inline-flex items-center space-x-2 bg-white text-blue-600 px-8 py-4 rounded-xl font-bold hover:bg-blue-50 transition shadow-lg">
                         <i class="fas fa-user-plus"></i>
                         <span>Get Started Now</span>
                     </a>
                 {% else %}
-                    <a href="{{ url_for('dashboard') }}" class="inline-flex items-center space-x-2 bg-white text-blue-600 px-8 py-4 rounded-xl font-bold hover:bg-blue-50 transition shadow-lg">
+                    <a href="{{ url_for('dashboard.dashboard') }}" class="inline-flex items-center space-x-2 bg-white text-blue-600 px-8 py-4 rounded-xl font-bold hover:bg-blue-50 transition shadow-lg">
                         <i class="fas fa-comments"></i>
                         <span>Chat with Our Assistant</span>
                     </a>

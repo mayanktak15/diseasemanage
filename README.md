@@ -27,14 +27,14 @@ A Flask-based web app for simple medical consultation workflows with login/regis
 Chatbot API example (JSON):
 
 Request body:
-```json
-{
+ Windows (tested) or any OS with Python 3.11+
+ Python 3.11 recommended
 	"message": "What is Docify Online?",
 	"symptoms": "Fever and headache for 2 days"
 }
 ```
 
-Response body (example):
+python -m pip install -r requirements-minimal.txt
 ```json
 {
 	"reply": "Docify Online is a platform for filling out medical certificates and consultation forms, with support from our chatbot."
@@ -45,7 +45,7 @@ Response body (example):
 
 - Windows (tested) or any OS with Python 3.10+
 - Python 3.10+ recommended
-
+python -m pip install -r requirements-minimal.txt -r requirements-ai.txt
 ## Quick start (no ML/AI dependencies)
 
 This path runs the app using the simple chatbot fallback. It’s fastest to set up and works on any machine.

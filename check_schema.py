@@ -1,5 +1,8 @@
-from app import app, db
+from app import create_app
+from app.extensions import db
 import sqlite3
+
+app = create_app()
 
 # Create database
 with app.app_context():

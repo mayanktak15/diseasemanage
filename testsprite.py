@@ -13,7 +13,11 @@ from pathlib import Path
 from datetime import datetime
 
 # Import app and DB models from the application
-from app import app, db, User, Consultation
+from app import create_app
+from app.extensions import db
+from app.models import Consultation, User
+
+app = create_app()
 app_module = importlib.import_module('app')
 
 
@@ -21,6 +25,8 @@ class AppEndpointTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         app.config["TESTING"] = True
+        app.config["WTF_CSRF_ENABLED"] = False
+        app.config["RATELIMIT_ENABLED"] = False
         # Ensure 127.0.0.1 is allowed; default is already '127.0.0.1/32'
         app.config["SECRET_KEY"] = "test-secret-key"
         cls.client = app.test_client()
@@ -111,9 +117,9 @@ class AppEndpointTests(unittest.TestCase):
 
     def test_ip_whitelist_blocks_non_allowed(self):
         # Temporarily narrow allow list to exclude localhost
-        prev = list(getattr(app_module, 'ALLOWED_IPS', []))
+        prev = list(app.config.get('ALLOWED_IPS', []))
         try:
-            setattr(app_module, 'ALLOWED_IPS', ["10.0.0.0/8"])
+            app.config['ALLOWED_IPS'] = ["10.0.0.0/8"]
             bad_client = app.test_client()
             # Simulate a client IP not in allowed range
             r = bad_client.get("/dashboard", environ_overrides={"REMOTE_ADDR": "8.8.8.8"})
@@ -122,7 +128,7 @@ class AppEndpointTests(unittest.TestCase):
             r_h = bad_client.get("/health", environ_overrides={"REMOTE_ADDR": "8.8.8.8"})
             self.assertEqual(r_h.status_code, 200)
         finally:
-            setattr(app_module, 'ALLOWED_IPS', prev)
+            app.config['ALLOWED_IPS'] = prev
 
     def test_users_csv_export_after_register(self):
         email = f"csv_{int(time.time())}@example.com"

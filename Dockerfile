@@ -1,5 +1,5 @@
 # Lightweight Python base
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 # Environment
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -17,12 +17,13 @@ ENV INSTALL_FULL=${INSTALL_FULL}
 
 # Install deps first for better layer caching
 COPY requirements.txt requirements.txt
-COPY requirements-min.txt requirements-min.txt
+COPY requirements-minimal.txt requirements-minimal.txt
+COPY requirements-ai.txt requirements-ai.txt
 RUN pip install --upgrade pip && \
         if [ "$INSTALL_FULL" = "true" ]; then \
             pip install -r requirements.txt; \
         else \
-            pip install -r requirements-min.txt; \
+            pip install -r requirements-minimal.txt; \
         fi
 
 # Copy project
