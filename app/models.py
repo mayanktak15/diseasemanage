@@ -1,6 +1,10 @@
+import logging
 from datetime import datetime
+from sqlalchemy import event
 
 from .extensions import db
+
+logger = logging.getLogger("docify.audit")
 
 
 class User(db.Model):
@@ -15,6 +19,7 @@ class User(db.Model):
     medical_history = db.Column(db.Text, nullable=True)
     allergies = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class Consultation(db.Model):
@@ -26,4 +31,32 @@ class Consultation(db.Model):
     priority = db.Column(db.String(10), default='normal')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_deleted = db.Column(db.Boolean, default=False, nullable=False)
+
     user = db.relationship('User', backref=db.backref('consultations', lazy=True))
+
+
+# SQLAlchemy Audit Hook Event Listeners
+@event.listens_for(db.Session, "after_flush")
+def audit_session_changes(session, flush_context):
+    for obj in session.new:
+        if isinstance(obj, (User, Consultation)):
+            logger.info(f"[AUDIT] INSERT: Created {obj.__class__.__name__} with values: {repr(obj)}")
+            
+    for obj in session.dirty:
+        if isinstance(obj, (User, Consultation)):
+            state = db.inspect(obj)
+            attrs = []
+            for attr in state.attrs:
+                hist = attr.load_history()
+                if hist.has_changes():
+                    attrs.append(attr.key)
+            # Log specifically if it was a soft-delete update
+            if "is_deleted" in attrs and getattr(obj, "is_deleted") is True:
+                logger.info(f"[AUDIT] SOFT-DELETE: Soft deleted {obj.__class__.__name__} ID={obj.id}")
+            else:
+                logger.info(f"[AUDIT] UPDATE: Modified {obj.__class__.__name__} ID={obj.id} fields={attrs}")
+                
+    for obj in session.deleted:
+        if isinstance(obj, (User, Consultation)):
+            logger.info(f"[AUDIT] HARD-DELETE: Hard deleted {obj.__class__.__name__} ID={obj.id}")

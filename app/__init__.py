@@ -5,7 +5,7 @@ import warnings
 from flask import Flask
 
 from .config import BaseConfig
-from .extensions import cache, csrf, db, limiter
+from .extensions import cache, csrf, db, limiter, migrate
 from .middleware.ip_filter import register_ip_filter
 from .middleware.security_headers import register_security_headers
 from .routes.auth import auth_bp
@@ -63,6 +63,7 @@ def create_app(config_object: type[BaseConfig] = BaseConfig) -> Flask:
         pass
 
     db.init_app(app)
+    migrate.init_app(app, db)
     cache.init_app(app)
     csrf.init_app(app)
     limiter.init_app(app)

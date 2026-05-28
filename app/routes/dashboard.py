@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, session, url_for
 
 from ..extensions import db
 from ..models import Consultation
@@ -28,17 +28,28 @@ def dashboard():
             return redirect(url_for('dashboard.dashboard'))
         return redirect(url_for('dashboard.dashboard'))
 
-    consultations = (Consultation.query
-                     .filter_by(user_id=user.id)
-                     .order_by(Consultation.created_at.desc())
-                     .all())
-    return render_template('dash.html', user=user, consultations=consultations)
+    # Paginate active consultations
+    page = request.args.get('page', 1, type=int)
+    per_page = int(request.args.get('per_page', 5))
+    
+    pagination = (Consultation.query
+                 .filter_by(user_id=user.id, is_deleted=False)
+                 .order_by(Consultation.created_at.desc())
+                 .paginate(page=page, per_page=per_page, error_out=False))
+                 
+    consultations = pagination.items
+    return render_template(
+        'dash.html', 
+        user=user, 
+        consultations=consultations, 
+        pagination=pagination
+    )
 
 
 @dashboard_bp.route('/update_consultation/<int:id>', methods=['GET', 'POST'])
 @login_required_page
 def update_consultation(id):
-    consultation = Consultation.query.get_or_404(id)
+    consultation = Consultation.query.filter_by(id=id, is_deleted=False).first_or_404()
     if consultation.user_id != session['user_id']:
         flash('Unauthorized access.', 'error')
         return redirect(url_for('dashboard.dashboard'))
@@ -56,11 +67,12 @@ def update_consultation(id):
 @dashboard_bp.route('/delete_consultation/<int:id>', methods=['POST'])
 @login_required_json
 def delete_consultation(id):
-    consultation = Consultation.query.get_or_404(id)
+    consultation = Consultation.query.filter_by(id=id, is_deleted=False).first_or_404()
     if consultation.user_id != session['user_id']:
         return jsonify({"success": False, "message": "Unauthorized"}), 403
 
-    db.session.delete(consultation)
+    # Perform soft delete instead of database delete
+    consultation.is_deleted = True
     ok, err = safe_commit_json()
     if ok:
         return jsonify({"success": True, "message": "Consultation deleted successfully"})
@@ -95,7 +107,7 @@ def profile():
 @dashboard_bp.route('/update_status/<int:id>', methods=['POST'])
 @login_required_json
 def update_status(id):
-    consultation = Consultation.query.get_or_404(id)
+    consultation = Consultation.query.filter_by(id=id, is_deleted=False).first_or_404()
 
     data = request.json
     new_status = data.get('status')

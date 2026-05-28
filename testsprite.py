@@ -273,10 +273,10 @@ class AppEndpointTests(unittest.TestCase):
         data = r.get_json()
         self.assertTrue(data.get("success"))
 
-        # Verify deletion
+        # Verify soft deletion
         with app.app_context():
             exists = Consultation.query.get(cons_id)
-            self.assertIsNone(exists)
+            self.assertTrue(exists.is_deleted)
 
     def test_update_status_json(self):
         # Unauthenticated should get 401 (use a fresh client with no session)
