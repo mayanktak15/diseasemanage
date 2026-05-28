@@ -99,6 +99,6 @@ docker run --rm -p 5000:5000 -e SECRET_KEY="change-me" -e ALLOWED_IPS="0.0.0.0/0
 ---
 
 ## 5. Documentation
-* Detailed Architecture: [`docs/ARCHITECTURE.md`](file:///c:/Users/Mayank%20Tak/Downloads/checker/diseasemanage/docs/ARCHITECTURE.md)
-* Deployment Guide: [`docs/DEPLOYMENT.md`](file:///c:/Users/Mayank%20Tak/Downloads/checker/diseasemanage/docs/DEPLOYMENT.md)
-* Troubleshooting: [`docs/TROUBLESHOOTING.md`](file:///c:/Users/Mayank%20Tak/Downloads/checker/diseasemanage/docs/TROUBLESHOOTING.md)
+* Detailed Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+* Deployment Guide: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+* Troubleshooting: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)

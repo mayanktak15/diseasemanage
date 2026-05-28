@@ -14,6 +14,8 @@ def app():
         "RATELIMIT_ENABLED": False,
         "SECRET_KEY": "test-secret-key"
     })
+    from app.extensions import limiter
+    limiter.enabled = False
 
     with app.app_context():
         db.create_all()

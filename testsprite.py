@@ -29,6 +29,8 @@ class AppEndpointTests(unittest.TestCase):
         app.config["RATELIMIT_ENABLED"] = False
         # Ensure 127.0.0.1 is allowed; default is already '127.0.0.1/32'
         app.config["SECRET_KEY"] = "test-secret-key"
+        from app.extensions import limiter
+        limiter.enabled = False
         cls.client = app.test_client()
         with app.app_context():
             # Reset database to a clean state for tests
@@ -275,7 +277,7 @@ class AppEndpointTests(unittest.TestCase):
 
         # Verify soft deletion
         with app.app_context():
-            exists = Consultation.query.get(cons_id)
+            exists = db.session.get(Consultation, cons_id)
             self.assertTrue(exists.is_deleted)
 
     def test_update_status_json(self):
@@ -325,7 +327,7 @@ class AppEndpointTests(unittest.TestCase):
 
         # Verify DB updated
         with app.app_context():
-            cons2 = Consultation.query.get(cons_id)
+            cons2 = db.session.get(Consultation, cons_id)
             self.assertEqual(cons2.status, "reviewed")
             self.assertEqual(cons2.doctor_notes, "Checked")
             self.assertGreaterEqual(cons2.updated_at, prev_updated)
@@ -372,7 +374,7 @@ class AppEndpointTests(unittest.TestCase):
         self.assertIn(b"Consultation updated successfully", r_up_post.data)
 
         with app.app_context():
-            cons2 = Consultation.query.get(cons_id)
+            cons2 = db.session.get(Consultation, cons_id)
             self.assertEqual(cons2.symptoms, "Updated symptoms")
             self.assertEqual(cons2.created_at, created_at_before)
             self.assertGreaterEqual(cons2.updated_at, updated_at_before)

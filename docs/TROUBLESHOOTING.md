@@ -16,6 +16,10 @@ This guide explains how to troubleshoot common issues when setting up and runnin
   python -m pip install -r requirements-minimal.txt -r requirements-ai.txt
   ```
 
+### Issue: Installation of AI packages hangs or consumes extreme CPU usage
+* **Resolution**: On Python 3.14, older versions of PyTorch (`<2.9.0`), scikit-learn (`<1.7.2`), and numpy (`<2.0.0`) lack precompiled wheels. This forces pip to compile them from source, utilizing C++ compilers and maxing out all CPU cores.
+  - To fix this, use Python 3.14 wheel-compatible version pins in `requirements-ai.txt`: `torch==2.9.0+cpu`, `scikit-learn>=1.7.2`, and `numpy>=2.0.0`. These versions download precompiled binaries instantly in seconds.
+
 ---
 
 ## 2. Database Migrations and SQLite

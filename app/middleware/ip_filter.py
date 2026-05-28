@@ -35,7 +35,7 @@ def register_ip_filter(app):
             logger.warning("Rejecting request with unresolved client IP.")
             abort(403)
 
-        if request.endpoint in ['health', 'status', 'static']:
+        if request.endpoint in ['main.health', 'health', 'status', 'static']:
             return
 
         allowed_ranges = current_app.config.get('ALLOWED_IPS', [])

@@ -2,6 +2,7 @@ from functools import wraps
 
 from flask import flash, jsonify, redirect, session, url_for
 
+from ..extensions import db
 from ..models import User
 
 
@@ -9,7 +10,7 @@ def get_current_user():
     uid = session.get('user_id')
     if not uid:
         return None
-    return User.query.get(uid)
+    return db.session.get(User, uid)
 
 
 def login_required_page(view_func):

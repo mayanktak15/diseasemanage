@@ -104,7 +104,7 @@ def test_consultation_crud_and_soft_delete(client, app):
     assert b"Consultation updated successfully" in resp_update.data
 
     with app.app_context():
-        cons = Consultation.query.get(cons_id)
+        cons = db.session.get(Consultation, cons_id)
         assert cons.symptoms == "Updated symptoms: sore throat"
         assert not cons.is_deleted
 
@@ -116,7 +116,7 @@ def test_consultation_crud_and_soft_delete(client, app):
 
     # Verify that consultation is soft deleted in database
     with app.app_context():
-        cons_deleted = Consultation.query.get(cons_id)
+        cons_deleted = db.session.get(Consultation, cons_id)
         assert cons_deleted.is_deleted is True
 
         # Ensure active query returns empty list

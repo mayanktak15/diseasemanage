@@ -11,3 +11,4 @@ class BaseConfig:
     CACHE_TYPE = 'SimpleCache'
     CACHE_DEFAULT_TIMEOUT = int(os.getenv('CACHE_DEFAULT_TIMEOUT', '60'))
     RATELIMIT_DEFAULT = os.getenv('RATELIMIT_DEFAULT', '200 per day;50 per hour')
+    RATELIMIT_ENABLED = os.getenv('RATELIMIT_ENABLED', 'true').lower() not in {'false', '0', 'no'}
